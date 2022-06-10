@@ -1,10 +1,13 @@
 library("ggplot2")
+library(scales)
+theme_set(
+  theme_minimal() +
+    theme(legend.position = "right")
+)
 library("BAS")
 
 # Read data 
 ames <- read.csv("ameshouse.txt", sep="")
-ames$SalePrice <- ames$SalePrice/1000 # Divide  
-ames$SalePrice <- log10(ames$SalePrice) # log transform 
 ames <- data.frame(ames)
 
 # Stats
@@ -13,11 +16,13 @@ print(nrow(ames))
 str(ames)
 
 # Visualize target
-require(gridExtra)
 options(scipen=10000)
-p1 <- ggplot(df, aes(x=SalePrice)) + geom_density() + labs(x="Sale Price (in thousand $)")
-p2 <- ggplot(df, aes(x=SalePrice)) + geom_density() +  scale_x_log10()  + labs(x="log(Sale Price)", y = "")
+p1 <- ggplot(df, aes(x=SalePrice)) + geom_density() + labs(x="Sale Price (in thousand $)") + scale_x_continuous(labels = label_number(suffix = " K", scale = 1e-3))
+p2 <- ggplot(df, aes(x=SalePrice)) + geom_density() +  scale_x_log10() + labs(x="log(Sale Price)", y = "") + scale_x_continuous(labels = label_number(suffix = " K", scale = 1e-3))
 grid.arrange(p1, p2, ncol=2)
+
+# Log transform 
+ames$SalePrice <- log10(ames$SalePrice) # log transform 
 
 ######## DATA CLEANING #########
 
