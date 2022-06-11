@@ -1,25 +1,62 @@
 library("ggplot2")
 library(scales)
+library("BAS")
+# Set plotting theme
 theme_set(
   theme_minimal() +
-    theme(legend.position = "right")
+    theme(legend.position = "right") + 
+    theme(axis.text = element_text(size = 16)) + 
+    theme(axis.title = element_text(size = 20))
+    
 )
-library("BAS")
 
 # Read data 
 ames <- read.csv("ameshouse.txt", sep="")
 ames <- data.frame(ames)
 
-# Stats
+##### Exploratory ##########
+
 print(ncol(ames))
 print(nrow(ames))
 str(ames)
 
 # Visualize target
 options(scipen=10000)
-p1 <- ggplot(df, aes(x=SalePrice)) + geom_density() + labs(x="Sale Price (in thousand $)") + scale_x_continuous(labels = label_number(suffix = " K", scale = 1e-3))
-p2 <- ggplot(df, aes(x=SalePrice)) + geom_density() +  scale_x_log10() + labs(x="log(Sale Price)", y = "") + scale_x_continuous(labels = label_number(suffix = " K", scale = 1e-3))
-grid.arrange(p1, p2, ncol=2)
+p1 <- ggplot(df, aes(x=SalePrice)) + geom_density(fill = "lightgrey") + labs(x="Sale Price ($)") + scale_x_continuous(labels = label_number(suffix = " K"))
+p2 <- ggplot(df, aes(x=SalePrice)) + geom_density(fill = "lightgrey") +  scale_x_log10() + labs(x="log(Sale Price)", y = "")
+p <- grid.arrange(p1, p2, ncol=2)
+ggsave("SalePrice_plot.png",p, dpi = 300)
+
+# Choose subset of features for scatter plot
+subset_cols <- c("SalePrice", "GrLivArea", "YearBuilt", "LotArea")
+subset_data <- ames[subset_cols]
+library(psych)
+#png(filename = "pairs_plot.png", width = 6, height = 6, units = 'in', res = 300)
+pairs.panels(subset_data, 
+             method = "pearson", # correlation method
+             hist.col = "grey",
+             density = TRUE,  # show density plots       
+             smooth = FALSE,
+             ellipses = FALSE,
+             cex.cor = 0.5,
+             cex.axis = 1.5,
+             pch = 21,
+             bg= rev(heat.colors(10))[factor(ames$OverallQual)]
+)
+#dev.off() 
+legend(0,1, as.vector(sort(unique(ames$OverallQual))),  
+       fill=rev(heat.colors(10)))
+
+ggcorplot(
+  data = subset_data,
+  var_text_size = 5,
+  cor_text_limits = c(5,10))
+
+#par(xpd = TRUE)
+#legend("bottomright", fill = unique(ames$OverallQual), legend = c( levels(as.factor(ames$OverallQual))))
+
+
+######## Transform target #############
 
 # Log transform 
 ames$SalePrice <- log10(ames$SalePrice) # log transform 
