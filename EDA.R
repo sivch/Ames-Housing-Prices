@@ -21,17 +21,17 @@ print(nrow(ames))
 str(ames)
 
 # Visualize target
-options(scipen=10000)
-p1 <- ggplot(df, aes(x=SalePrice)) + geom_density(fill = "lightgrey") + labs(x="Sale Price ($)") + scale_x_continuous(labels = label_number(suffix = " K"))
-p2 <- ggplot(df, aes(x=SalePrice)) + geom_density(fill = "lightgrey") +  scale_x_log10() + labs(x="log(Sale Price)", y = "")
+require(gridExtra)
+p1 <-ggplot(ames, aes(x=SalePrice)) + geom_density(fill = "lightgrey") + labs(x="Sale Price ($)", y = "Density") + scale_y_continuous(labels = function(x) format(x, scientific = TRUE)) +scale_x_continuous(labels = label_number(scale = 1e-3,suffix = " K"))
+p2 <- ggplot(ames, aes(x=log10(SalePrice))) + geom_density(fill = "lightgrey") + labs(x="log(Sale Price)", y = "")
 p <- grid.arrange(p1, p2, ncol=2)
-ggsave("SalePrice_plot.png",p, dpi = 300)
+ggsave("SalePrice_plot.png",p, dpi = 300, height = 3, width = 10)
 
 # Choose subset of features for scatter plot
 subset_cols <- c("SalePrice", "GrLivArea", "YearBuilt", "LotArea")
 subset_data <- ames[subset_cols]
 library(psych)
-#png(filename = "pairs_plot.png", width = 6, height = 6, units = 'in', res = 300)
+png(filename = "pairs_plot.png", width = 6, height = 6, units = 'in', res = 300)
 pairs.panels(subset_data, 
              method = "pearson", # correlation method
              hist.col = "grey",
@@ -43,7 +43,7 @@ pairs.panels(subset_data,
              pch = 21,
              bg= rev(heat.colors(10))[factor(ames$OverallQual)]
 )
-#dev.off() 
+dev.off() 
 legend(0,1, as.vector(sort(unique(ames$OverallQual))),  
        fill=rev(heat.colors(10)))
 
@@ -64,6 +64,10 @@ ames$SalePrice <- log10(ames$SalePrice) # log transform
 ######## DATA CLEANING #########
 
 # Remove outliers (GrLivingArea > 4000) ? MAYBE
+ames<- ames[ames$GrLivArea < 4000,]
+
+# Log transform 
+ames$GrLivArea <- log10(ames$GrLivArea) # log transform
 
 # Check number of missing values 
 data.frame(sort(colSums(is.na(ames)), decreasing = TRUE)[0:20])
@@ -140,7 +144,7 @@ beta = coef(ames.lm)
 ggplot(data = ames_train, aes(x = GrLivArea, y = SalePrice)) +
   geom_point(color = "steelblue") +
   geom_abline(intercept = beta[1], slope = beta[2], size = 1, col='darkorange') +
-  xlab("GrLivArea") + ggtitle("Regression Line")
+  xlab("log(GrLivArea)") + ylab("log(SalePrice)") + ggtitle("Regression Line")
 
 output = summary(ames.lm)$coef[, 1:2]
 output
