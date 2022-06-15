@@ -192,8 +192,13 @@ plot1
 
 ######## Fit Full model #######
 # Use `bas.lm` to run regression model
-cog.bas = bas.lm(SalePrice ~ ., data = ames_dummy, prior = "g-prior",
-                 modelprior = Bernoulli(1), bestmodel = rep(1, ncol(ames_dummy)), n.models = 1)
+cog.bas = bas.lm(SalePrice ~ ., 
+                 data = ames_dummy, 
+                 prior = "g-prior",
+                 modelprior = Bernoulli(1), 
+                 bestmodel = rep(1, ncol(ames_dummy)), 
+                 n.models = 1,
+                 method = "MCMC")
 
 # Posterior Means and Posterior Standard Deviations:
 cog.coef = coef(cog.bas)
@@ -256,3 +261,10 @@ points(prednew$Ypred, ames_test$SalePrice,
        pch = 16,
        col="red",type="p"
 )
+
+########## MODEL SELECTION WITH SPIKE & SLAB prior #################
+
+# 
+
+
+
