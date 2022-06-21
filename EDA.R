@@ -191,14 +191,16 @@ plot1 = ggplot(data = ames_train, aes(x = GrLivArea, y = SalePrice)) +
 plot1
 
 ######## Fit Full model #######
+
+
+
 # Use `bas.lm` to run regression model
 cog.bas = bas.lm(SalePrice ~ ., 
                  data = ames_dummy, 
                  prior = "g-prior",
                  modelprior = Bernoulli(1), 
                  bestmodel = rep(1, ncol(ames_dummy)), 
-                 n.models = 1,
-                 method = "MCMC")
+                 n.models = 1)
 
 # Posterior Means and Posterior Standard Deviations:
 cog.coef = coef(cog.bas)
@@ -213,7 +215,10 @@ plot(cog.coef, subset = 2:5, ask = F)
 # Find best model with BIC
 cog.BIC = bas.lm(SalePrice ~ ., data = ames_train,
                  prior = "BIC", 
-                 modelprior = uniform())
+                 modelprior = uniform(),
+                 method = "MCMC",
+                 thin = 200)
+
 
 round(summary(cog.BIC), 3)
 
