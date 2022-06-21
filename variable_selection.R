@@ -8,7 +8,6 @@ theme_set(
     theme(legend.position = "right") + 
     theme(axis.text = element_text(size = 16)) + 
     theme(axis.title = element_text(size = 20))
-  
 )
 
 # Read data 
@@ -58,6 +57,9 @@ ames$Sold_Q2 <- as.numeric(ames$MoSold >= 4 & ames$MoSold < 7)
 ames$Sold_Q3 <- as.numeric(ames$MoSold >= 7 & ames$MoSold < 10)
 ames$MoSold <- as.factor(ames$MoSold)
 
+# Convert porch-variables to a single numeric response "totalPorchAreaSF"
+ames$totalPorchAreaSF =  ames$OpenPorchSF + ames$EnclosedPorch + ames$X3SsnPorch + ames$ScreenPorch
+
 # Convert the chosen categorical features to dummy-variables
 ames_dummy <- fastDummies::dummy_cols(ames, 
                                       select_columns = c("Sold_Q1",
@@ -66,7 +68,6 @@ ames_dummy <- fastDummies::dummy_cols(ames,
                                                          "CentralAir"),     
                                       remove_selected_columns	= TRUE, 
                                       remove_first_dummy = TRUE) # keep n-1 dummies
-
 
 # Examine which numeric variables to keep and discard: 
   # Correlation plot 
@@ -103,7 +104,11 @@ drop_cols <- append(drop_cols, c("TotRmsAbvGrd"))
 drop_cols <- append(drop_cols, c("YrSold"))
 
 # other
-drop_cols <- append(drop_cols, c("MiscVal"))
+drop_cols <- append(drop_cols, c("MiscVal", 
+                                 "OpenPorchSF", 
+                                 "EnclosedPorch",
+                                 "X3SsnPorch",
+                                 "ScreenPorch"))
 
 # DROP numerical columns
 ames_dummy <- ames_dummy[,!(names(ames_dummy) %in% drop_cols)]
@@ -122,81 +127,111 @@ ames_test <- ames_dummy[-train_ind, ]
 
 ######## Scale #########
 ## ? should we standardize? 
-ames_train <- scale(ames_train)
-ames_test <- scale(ames_test)
-
-######## Fit Full model #######
-
-# Use `bas.lm` to run regression model
-cog.bas = bas.lm(SalePrice ~ ., 
-                 data = ames_dummy, 
-                 prior = "g-prior",
-                 modelprior = Bernoulli(1), 
-                 bestmodel = rep(1, ncol(ames_dummy)), 
-                 n.models = 1)
-
-# Posterior Means and Posterior Standard Deviations:
-cog.coef = coef(cog.bas)
-cog.coef
-
-# Plot marginal posterior distributions of each regressor
-par(mfrow = c(2, 2))
-plot(cog.coef, subset = 2:5, ask = F)
+ames_train <- data.frame(scale(ames_train))
+ames_test <- data.frame(scale(ames_test))
 
 ####### MODEL SELECTION #######
 
-# Find best model with BIC
-cog.BIC = bas.lm(SalePrice ~ ., data = ames_train,
-                 prior = "BIC", 
+# hyperparam
+alphaparam <- 30
+
+# Find best model g-prior
+ames.gprior = bas.lm(SalePrice ~ ., data = ames_train,
+                 prior = "g-prior", 
+                 a = alphaparam,
                  modelprior = uniform(),
                  method = "MCMC")
 
-round(summary(cog.BIC), 3)
+round(summary(ames.gprior), 3)
 
 # Find the index of the model with the largest logmarg
-best = which.max(cog.BIC$logmarg)
+best = which.max(ames.gprior$logmarg)
 
 # Retreat the index of variables in the best model, 0 is the intercept index
-bestmodel = cog.BIC$which[[best]]+1
+bestmodel = ames.gprior$which[[best]]+1
 
 print(bestmodel)
 
 # 0 vector with length equal to the number of variables in the full model
-bestgamma = rep(0, cog.BIC$n.vars)
+bestgamma = rep(0, ames.gprior$n.vars)
 # Change the indicator to 1 where variables are used
 bestgamma[bestmodel] = 1
 
 print(bestgamma)
 
-# Fit the best BIC model. Impose the variables to use via bestgamma
-cog.bestBIC = bas.lm(SalePrice ~ ., data = ames_train, prior = "BIC",
-                     modelprior=uniform(), n.models=1, bestmodel=bestgamma)
+# Fit the best g-prior model. Impose the variables to use via bestgamma
+ames.best_gprior = bas.lm(SalePrice ~ ., 
+                          data = ames_train, 
+                          prior = "g-prior",
+                          modelprior=uniform(), 
+                          a=alphaparam,
+                          n.models=1, 
+                          bestmodel=bestgamma)
 
-# Retreat coefficients information
-cog.coef = coef(cog.bestBIC)
+# Retrieve coefficients information
+ames.coef = coef(ames.best_gprior)
 
 # Retreat bounds of credible intervals
-out = confint(cog.coef)[, 1:2]
+out = confint(ames.coef)[, 1:2]
 
 # Combine results and construct summary table
-coef.BIC = cbind(cog.coef$postmean, cog.coef$postsd, out)
+coef.gprior = cbind(ames.coef$postmean, ames.coef$postsd, out)
 names = c("post mean", "post sd", colnames(out))
-colnames(coef.BIC) = names
+colnames(coef.gprior) = names
 
-round(coef.BIC[bestmodel,], 3)
+round(coef.gprior[bestmodel,], 5)
+
+# Plot marginal posterior distributions of each regressor
+par(mfrow = c(2, 2))
+plot(ames.coef, subset = (bestmodel[1:4]), ask = F)
+par(mfrow = c(2, 2))
+plot(ames.coef, subset = (bestmodel[5:8]), ask = F)
+par(mfrow = c(2, 2))
+plot(ames.coef, subset = (bestmodel[9:11]), ask = F)
+
+##########################################
+###### MODEL UNCERTAINTY ##################
+##########################################
+
+# show the posterior probabilities of the top 5 models
+round(summary(cog_bas), 3)
+
+# Print marginal posterior probabilities of inclusion
+print(ames.gprior)
+
+# Visualize Model uncertainty
+par()
+image(ames.gprior, rotate = F)
 
 ########### Prediction ##########
-fitted<-predict(cog.bestBIC, estimator = "BMA")
-prednew <- predict(cog.bestBIC,newdata=ames_test, estimator = "BMA")
+fitted <- predict(ames.best_gprior, estimator = "BMA")
+prednew <- predict(ames.best_gprior, newdata=ames_test, estimator = "BMA")
 
-plot(fitted$Ypred[1:length(fitted$Ypred)],ames_train$SalePrice[1:length(fitted$Ypred)],
+plot(fitted$Ypred,ames_train$SalePrice,
      pch = 16,
+     cex = 0.5,
      xlab = expression(hat(mu[i])), ylab = 'Y',type="p")
 
 points(prednew$Ypred, ames_test$SalePrice,
        pch = 16,
-       col="red",type="p"
-)
+       cex = 0.5,
+       col="red",type="p")
+abline(0, 1)
+#legend(c("Training data", "test data"))
+
+prednew_se <- predict(ames.best_gprior, estimator = "BPM", newdata=ames_test,se.fit = TRUE)
+conf.fit <- confint(prednew_se, parm = "mean")
+conf.pred <- confint(prednew_se, parm = "pred")
+plot(conf.pred[1:40], main="Out of sample: pred. (black) vs true (red)")
+points(seq(1:40),ames_test$SalePrice[1:40],col="red")
+
+
+n = 40
+BPM <- predict(ames.best_gprior, estimator = "BPM", newdata=ames_test,se.fit = TRUE)
+conf.fit <- confint(BPM, parm = "mean")
+conf.pred <- confint(BPM, parm = "pred")
+plot(conf.pred, main="Out of sample: pred. (black) vs true (red)")
+points(ames_test$SalePrice,col="red")
 
 ########## Plot errors #########
 plot(seq(1,nrow(ames_test)),prednew$Ypred-ames_test$SalePrice,
@@ -204,7 +239,13 @@ plot(seq(1,nrow(ames_test)),prednew$Ypred-ames_test$SalePrice,
       cex = 0.5,
        col="darkblue",type="p", 
      xlab = "Index",
-     ylab = "Error"
+     ylab = "Error",
+     main = "Residuals (test-data)"
 )
+abline(h = 0, col = "red")
+
+##### EXAMINE THE LARGE RESIDUAL #######
+
+
 
 
