@@ -225,7 +225,6 @@ conf.pred <- confint(prednew_se, parm = "pred")
 plot(conf.pred[1:40], main="Out of sample: pred. (black) vs true (red)")
 points(seq(1:40),ames_test$SalePrice[1:40],col="red")
 
-
 n = 40
 BPM <- predict(ames.best_gprior, estimator = "BPM", newdata=ames_test,se.fit = TRUE)
 conf.fit <- confint(BPM, parm = "mean")
@@ -245,7 +244,7 @@ plot(seq(1,nrow(ames_test)),prednew$Ypred-ames_test$SalePrice,
 abline(h = 0, col = "red")
 
 ##### EXAMINE THE LARGE RESIDUAL #######
-
+points
 
 
 
