@@ -51,6 +51,25 @@ ames$OverallCond <- as.factor(ames$OverallCond)
 ames$SalePrice <- log10(ames$SalePrice) # log transform 
 ames$GrLivArea <- log10(ames$GrLivArea) # log transform
 
+# Examine which numeric variables to keep and discard: 
+  # Correlation plot 
+cor_matrix <- round(cor(ames[,unlist(lapply(ames, is.numeric), use.names = FALSE)]),2)
+melted_cor_matrix <- melt(cor_matrix)
+ggplot(data = melted_cor_matrix, aes(Var2, Var1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Pearson\nCorrelation") +
+  theme_minimal()+ 
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, 
+                                   size = 13, hjust = 1),
+        axis.text.y = element_text(size = 13), 
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 16))+
+  labs(x = "", y = "") + 
+  coord_fixed()
+ggsave("corplot3.png")
+
 # Convert month sold from numeric to quarters (categorical variable)
 ames$Sold_Q1 <- as.numeric(ames$MoSold < 4)
 ames$Sold_Q2 <- as.numeric(ames$MoSold >= 4 & ames$MoSold < 7)
@@ -69,19 +88,6 @@ ames_dummy <- fastDummies::dummy_cols(ames,
                                       remove_selected_columns	= TRUE, 
                                       remove_first_dummy = TRUE) # keep n-1 dummies
 
-# Examine which numeric variables to keep and discard: 
-  # Correlation plot 
-cor_matrix <- round(cor(ames_dummy[,unlist(lapply(ames_dummy, is.numeric), use.names = FALSE)]),2)
-melted_cor_matrix <- melt(cor_matrix)
-ggplot(data = melted_cor_matrix, aes(Var2, Var1, fill = value))+
-  geom_tile(color = "white")+
-  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-                       midpoint = 0, limit = c(-1,1), space = "Lab", 
-                       name="Pearson\nCorrelation") +
-  theme_minimal()+ 
-  theme(axis.text.x = element_text(angle = 90, vjust = 1, 
-                                   size = 12, hjust = 1))+
-  coord_fixed()
 
 # Drop "GarageCars" since it is very correlated with "GarageArea"
 drop_cols <-c("GarageCars")
@@ -211,42 +217,41 @@ prednew <- predict(ames.best_gprior, newdata=ames_test, estimator = "BMA")
 
 plot(fitted$Ypred,ames_train$SalePrice,
      pch = 16,
-     cex = 0.5,
+     cex = 0.8,
      xlab = expression(hat(mu[i])), ylab = 'Y',type="p")
 
 points(prednew$Ypred, ames_test$SalePrice,
        pch = 16,
-       cex = 0.5,
+       cex = 0.8,
        col="red",type="p")
 abline(0, 1)
-#legend(c("Training data", "test data"))
+legend(x = -3, y = 3, legend = c("Training data", "Test data"), col = c("black", "red"), pch = 16)
 
 prednew_se <- predict(ames.best_gprior, estimator = "BPM", newdata=ames_test,se.fit = TRUE)
 conf.fit <- confint(prednew_se, parm = "mean")
 conf.pred <- confint(prednew_se, parm = "pred")
-plot(conf.pred[1:40], main="Out of sample: pred. (black) vs true (red)")
+plot(conf.pred[1:40], col = "black")
 points(seq(1:40),ames_test$SalePrice[1:40],col="red")
+legend(x = 33.3, y = -1.8, legend = c("Predicted", "True"), col = c("Black", "Red"), pch = 1, cex = 1.2)
 
 n = 40
 BPM <- predict(ames.best_gprior, estimator = "BPM", newdata=ames_test,se.fit = TRUE)
 conf.fit <- confint(BPM, parm = "mean")
 conf.pred <- confint(BPM, parm = "pred")
-plot(conf.pred, main="Out of sample: pred. (black) vs true (red)")
-points(ames_test$SalePrice,col="red")
+plot(conf.pred)
+points(ames_test$SalePrice,col="Red")
 
 ########## Plot errors #########
-plot(seq(1,nrow(ames_test)),prednew$Ypred-ames_test$SalePrice,
-       pch = 1,
-      cex = 0.5,
-       col="darkblue",type="p", 
-     xlab = "Index",
-     ylab = "Error",
-     main = "Residuals (test-data)"
-)
-abline(h = 0, col = "red")
+
+d = data.frame(Index = seq(1,nrow(ames_test)), Error = c(prednew$Ypred-ames_test$SalePrice))
+ggplot(data = d)+ geom_point(aes(x = Index, y = Error), shape=1, col = "black", size = 3) +
+  theme_minimal()+
+  theme(axis.text.x = element_text(size = 16), 
+        axis.text.y = element_text(size = 16), 
+        axis.title = element_text(size = 20)) +
+  geom_hline(yintercept=0,color = "red", size=1)
+ggsave("residuals.png", width = 7, height = 4)
 
 ##### EXAMINE THE LARGE RESIDUAL #######
-points
-
 
 
