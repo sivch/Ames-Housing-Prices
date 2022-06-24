@@ -126,7 +126,6 @@ ames_train <- ames_dummy[train_ind, ]
 ames_test <- ames_dummy[-train_ind, ]
 
 ######## Scale #########
-## ? should we standardize? 
 ames_train <- data.frame(scale(ames_train))
 ames_test <- data.frame(scale(ames_test))
 
@@ -203,7 +202,10 @@ print(ames.gprior)
 par()
 image(ames.gprior, rotate = F)
 
+##########################################
 ########### Prediction ##########
+##########################################
+
 fitted <- predict(ames.best_gprior, estimator = "BMA")
 prednew <- predict(ames.best_gprior, newdata=ames_test, estimator = "BMA")
 
