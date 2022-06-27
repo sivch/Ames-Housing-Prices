@@ -2,6 +2,7 @@ library("ggplot2")
 library(scales)
 library("BAS")
 library(reshape2)
+library(psych)
 # Set plotting theme
 theme_set(
   theme_minimal() +
@@ -13,6 +14,21 @@ theme_set(
 # Read data 
 ames <- read.csv("ameshouse.txt", sep="")
 ames <- data.frame(ames)
+
+# Scatter plot 
+subset_cols <- c("SalePrice", "GrLivArea", "YearBuilt", "LotArea")
+subset_data <- ames[subset_cols]
+p1 <- pairs.panels(subset_data, 
+             method = "pearson", # correlation method
+             hist.col = "grey",
+             density = TRUE,  # show density plots       
+             smooth = FALSE,
+             ellipses = FALSE,
+             cex.cor = 0.5,
+             cex.axis = 1.5,
+             pch = 21,
+             bg= rev(heat.colors(10))[factor(ames$OverallQual)]
+)
 
 ############################################
 ############## DATA CLEANING ##############
