@@ -129,7 +129,6 @@ print(ncol(ames_dummy))
 ######## Split into training and test ##########
 ## 80% of the sample size
 train_size <- floor(0.8 * nrow(ames_dummy))
-## set the seed to make your partition reproducible
 set.seed(123)
 train_ind <- sample(seq_len(nrow(ames_dummy)), size = train_size)
 
@@ -187,15 +186,13 @@ coef.gprior = cbind(ames.coef$postmean, ames.coef$postsd, out)
 names = c("post mean", "post sd", colnames(out))
 colnames(coef.gprior) = names
 
-round(coef.gprior[bestmodel,], 5)
+round(coef.gprior[bestmodel,], 4)
 
 # Plot marginal posterior distributions of each regressor
-par(mfrow = c(2, 2))
-plot(ames.coef, subset = (bestmodel[1:4]), ask = F)
-par(mfrow = c(2, 2))
-plot(ames.coef, subset = (bestmodel[5:8]), ask = F)
-par(mfrow = c(2, 2))
-plot(ames.coef, subset = (bestmodel[9:11]), ask = F)
+par(mfrow = c(3, 2))
+plot(ames.coef, subset = (bestmodel[1:6]), ask = F)
+plot(ames.coef, subset = (bestmodel[7:12]), ask = F)
+plot(ames.coef, subset = (bestmodel[13:13]), ask = F)
 
 ##########################################
 ###### MODEL UNCERTAINTY ##################
@@ -212,9 +209,9 @@ par()
 image(ames.gprior, rotate = F)
 
 ##########################################
-########### Prediction ##########
+############### Prediction ############
 ##########################################
-
+par(mfrow = c(1, 1))
 fitted <- predict(ames.best_gprior, estimator = "BMA")
 prednew <- predict(ames.best_gprior, newdata=ames_test, estimator = "BMA")
 
@@ -228,14 +225,14 @@ points(prednew$Ypred, ames_test$SalePrice,
        cex = 0.8,
        col="red",type="p")
 abline(0, 1)
-legend(x = -3, y = 3, legend = c("Training data", "Test data"), col = c("black", "red"), pch = 16)
+legend(x = -3, y = 3.45, legend = c("Training data", "Test data"), col = c("black", "red"), cex = 1.4, pch = 16)
 
 prednew_se <- predict(ames.best_gprior, estimator = "BPM", newdata=ames_test,se.fit = TRUE)
 conf.fit <- confint(prednew_se, parm = "mean")
 conf.pred <- confint(prednew_se, parm = "pred")
 plot(conf.pred[1:40], col = "black")
 points(seq(1:40),ames_test$SalePrice[1:40],col="red")
-legend(x = 33.3, y = -1.8, legend = c("Predicted", "True"), col = c("Black", "Red"), pch = 1, cex = 1.2)
+legend(x = 33.3, y = -1.8, legend = c("Predicted", "True"), col = c("Black", "Red"), pch = 1, cex = 1)
 
 n = 40
 BPM <- predict(ames.best_gprior, estimator = "BPM", newdata=ames_test,se.fit = TRUE)
@@ -253,6 +250,4 @@ ggplot(data = d)+ geom_point(aes(x = Index, y = Error), shape=1, col = "black", 
         axis.text.y = element_text(size = 16), 
         axis.title = element_text(size = 20)) +
   geom_hline(yintercept=0,color = "red", size=1)
-ggsave("residuals.png", width = 7, height = 4)
 
-##### EXAMINE THE LARGE RESIDUAL #######
